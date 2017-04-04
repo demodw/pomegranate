@@ -1426,7 +1426,7 @@ cdef class DiscreteDistribution( Distribution ):
 
 		if self.frozen:
 			return
-
+		print "fit"
 		self.summarize( items, weights )
 		self.from_summaries( inertia )
 
@@ -1437,6 +1437,7 @@ cdef class DiscreteDistribution( Distribution ):
 			weights = numpy.ones(len(items))
 		else:
 			weights = numpy.asarray(weights)
+		print weights, '--weights'
 
 		self.summaries[1] += weights.sum()
 		characters = self.summaries[0]
@@ -1460,7 +1461,7 @@ cdef class DiscreteDistribution( Distribution ):
 
 		free( encoded_counts )
 
-	def from_summaries( self, inertia=0.0 ):
+	def from_summaries( self, inertia=0.0, pseudocount=0.1):
 		"""Use the summaries in order to update the distribution."""
 
 		if self.summaries[1] == 0 or self.frozen == True:
@@ -1476,8 +1477,15 @@ cdef class DiscreteDistribution( Distribution ):
 			self.bake( self.encoded_keys )
 		else:
 			n = len(self.encoded_keys)
+			
+			# Add pseudo-count
+			for i in range(n):
+				self.encoded_counts[i] += pseudocount
+				self.summaries[1] += pseudocount
+
 			for i in range(n):
 				key = self.encoded_keys[i]
+				self.encoded_counts[i] += pseudocount
 				self.dist[key] = (self.dist[key]*inertia +
 					(1-inertia)*self.encoded_counts[i] / self.summaries[1])
 				self.log_dist[key] = _log( self.dist[key] )
@@ -1613,6 +1621,7 @@ cdef class PoissonDistribution(Distribution):
 		items, weights = weight_set(items, weights)
 		if weights.sum() <= 0:
 			return
+
 
 		cdef double* items_p = <double*> (<numpy.ndarray> items).data
 		cdef double* weights_p = <double*> (<numpy.ndarray> weights).data
